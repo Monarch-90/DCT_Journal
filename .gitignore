@@ -15,4 +15,10 @@ app/build/
 
 # Windows specific files
 Thumbs.db
-
+gradlew.bat
+.gitignore
+proguard-rules.pro
+gradlew
+gradle.properties
+gradle-wrapper.properties
+gradle-wrapper.jar
