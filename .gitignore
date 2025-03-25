@@ -1,0 +1,18 @@
+# Ignore IntelliJ project files
+.idea/
+*.iml
+
+# Gradle files
+.gradle/
+local.properties
+build/
+
+# Android artifacts
+app/build/
+
+# macOS specific files
+.DS_Store
+
+# Windows specific files
+Thumbs.db
+
