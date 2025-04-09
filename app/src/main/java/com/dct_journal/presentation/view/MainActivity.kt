@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.dct_journal.databinding.ActivityMainBinding
+import com.dct_journal.presentation.view_model.AppLauncherViewModel
 import com.dct_journal.presentation.view_model.MainViewModel
 import com.google.zxing.ResultPoint
 import com.journeyapps.barcodescanner.BarcodeCallback
@@ -26,6 +27,7 @@ class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
     private val mainViewModel: MainViewModel by viewModel()
+    private val appLauncherViewModel: AppLauncherViewModel by viewModel()
     private var lastScanTime: Long = 0
     private val scanDelay = 1000L
 
@@ -53,16 +55,24 @@ class MainActivity : AppCompatActivity() {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewModel.authResult.collectLatest { response ->
                     response?.let {
+                        Log.d("Decryption", "Дешифрованное сообщение: ${it.message}")
                         binding.tvScanResult.text = it.message
                     }
                 }
             }
         }
+
+        // Запуск ВМС
+//        binding.acBtnTestAppStart.setOnClickListener {
+//            appLauncherViewModel.launchApp("org.telegram.messenger")
+//        }
     }
 
     private fun setupBarcodeScanner() {
         val barcodeScanner: DecoratedBarcodeView = binding.scanBarcode
+
         barcodeScanner.resume()
+
         barcodeScanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult?) {
                 val currentTime = System.currentTimeMillis()
@@ -75,8 +85,11 @@ class MainActivity : AppCompatActivity() {
                     val androidID = getAndroidID()
                     Log.d("BarcodeScanner", "Распознан штрихкод: $scannerBarcode")
                     if (androidID != "unknown") {
-                        Log.d("BarcodeScanner", "Отправка данных с Android Id: $androidID и штрихкодом: $scannerBarcode")
-                        mainViewModel.authenticate(androidID, scannerBarcode, "")
+                        Log.d(
+                            "BarcodeScanner",
+                            "Отправка данных с Android Id: $androidID и штрихкодом: $scannerBarcode"
+                        )
+                        mainViewModel.authenticate(androidID, scannerBarcode)
                     } else {
                         Log.e("BarcodeScanner", "Android ID не удалось получить")
                         binding.tvScanResult.text = "Cann't take AndroidId"

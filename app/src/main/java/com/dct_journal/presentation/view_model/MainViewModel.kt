@@ -14,17 +14,18 @@ class MainViewModel(private val authenticateUserUseCase: AuthenticateUserUseCase
     private val _authResult = MutableStateFlow<AuthResponse?>(null)
     val authResult: StateFlow<AuthResponse?> = _authResult
 
-    fun authenticate(androidId: String, barcode: String, userName: String) {
+    fun authenticate(androidId: String, barcode: String) {
         viewModelScope.launch {
             try {
-                authenticateUserUseCase(androidId, barcode, userName).collect { response ->
+                authenticateUserUseCase(androidId, barcode).collect { response ->
                     Log.d("MainViewModel", "Получен ответ от сервера: ${response.message}")
                     _authResult.value = response
                 }
 
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Ошибка при отправке данных: ${e.message}", e)
-                _authResult.value = AuthResponse(false, "Ошибка: ${e.message}", "User name: $userName")
+                _authResult.value =
+                    AuthResponse(false, "Ошибка: ${e.message}", "")
             }
         }
     }

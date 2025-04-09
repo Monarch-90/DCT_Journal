@@ -7,6 +7,6 @@ import retrofit2.http.POST
 
 interface ApiService {
 
-    @POST("authenticate")
+    @POST("scan")
     suspend fun authenticateUser(@Body request: AuthRequest): AuthResponse
 }

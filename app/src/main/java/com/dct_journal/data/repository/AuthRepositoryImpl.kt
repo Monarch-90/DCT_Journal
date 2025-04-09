@@ -4,7 +4,6 @@ import android.util.Log
 import com.dct_journal.data.network.ApiService
 import com.dct_journal.data.network.model.AuthRequest
 import com.dct_journal.data.network.model.AuthResponse
-import com.dct_journal.util.AESEncryptionUtil
 
 class AuthRepositoryImpl(
     private val apiService: ApiService,
@@ -13,13 +12,13 @@ class AuthRepositoryImpl(
     override suspend fun authenticateUser(
         androidId: String,
         barcode: String,
-        userName: String,
+        iv: String,
     ): AuthResponse {
 
         return try {
             // Создание запроса
             val request = AuthRequest(
-                androidId = androidId, barcode = barcode, userName = userName
+                androidId = androidId, barcode = barcode, iv = iv
             )
 
             Log.d("AuthRepository", "Отправляю запрос на сервер с данными: $request")
@@ -30,7 +29,7 @@ class AuthRepositoryImpl(
             response
         } catch (e: Exception) {
             Log.e("AuthRepository", "Ошибка в запросе: ${e.message}", e)
-            AuthResponse(false, "Ошибка сервера: ${e.message}", "UserName: $userName")
+            AuthResponse(false, "Ошибка сервера: ${e.message}", "IV: $iv")
         }
     }
 }

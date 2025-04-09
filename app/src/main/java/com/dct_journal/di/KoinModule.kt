@@ -5,6 +5,7 @@ import com.dct_journal.data.network.getUnsafeOkHttpClient
 import com.dct_journal.data.repository.AuthRepository
 import com.dct_journal.data.repository.AuthRepositoryImpl
 import com.dct_journal.domain.usecase.AuthenticateUserUseCase
+import com.dct_journal.presentation.view_model.AppLauncherViewModel
 import com.dct_journal.presentation.view_model.MainViewModel
 import com.dct_journal.util.AESEncryptionUtil
 import okhttp3.OkHttpClient
@@ -24,7 +25,7 @@ val appModule = module {
             .build()
     }
 
-    // Retrofit (надстройка над OkHttp) — для реализации API-клиента и отправки данных на сервер (для тестирования - IP моего ноута)
+    // Retrofit (надстройка над OkHttp) — для реализации API-клиента и отправки данных на сервер (для тестирования - IP моего ноутбука)
     single {
         Retrofit.Builder()
 //            .baseUrl("https://server.url/") // production url
@@ -37,12 +38,13 @@ val appModule = module {
     // ApiService для взаимодействия с сервером
     single<ApiService> { get<Retrofit>().create(ApiService::class.java) }
 
-    // Репозиторий авторизации
+    // Репозиторий авторизации пользователя
     single<AuthRepository> { AuthRepositoryImpl(get()) }
 
-    // Use Case для авторизации
+    // Use Case для авторизации пользователя
     single { AuthenticateUserUseCase(get(), get()) }
 
     // ViewModel
     viewModel { MainViewModel(get()) }
+    viewModel { AppLauncherViewModel(get()) } // Для запуска ВМС
 }
