@@ -1,6 +1,7 @@
 package com.dct_journal.presentation.view
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
@@ -28,13 +29,30 @@ class MainActivity : AppCompatActivity() {
     private val binding get() = _binding!!
     private val mainViewModel: MainViewModel by viewModel()
     private val appLauncherViewModel: AppLauncherViewModel by viewModel()
-    private var lastScanTime: Long = 0
-    private val scanDelay = 1000L
+
+    // Приемник для Broadcast Intent от DataWedge
+    private var scanReceiver: BroadcastReceiver? = null
+
+    // Константы для DataWedge
+    companion object {
+        // Действие Intent, указанное в настройках DataWedge вашего MC330M
+        const val DATAWEDGE_SCAN_ACTION = "com.dxexaple.ACTION"
+        // Стандартный ключ для получения данных сканирования из Intent Extras
+        const val DATAWEDGE_DATA_STRING_KEY = "com.symbol.datawedge.data_string"
+        // (Опционально) Ключ для получения типа считанного штрихкода
+        const val DATAWEDGE_LABEL_TYPE_KEY = "com.symbol.datawedge.label_type"
+
+        // Задержка перед запуском ВМС приложения (2 секунды)
+        const val WMS_APP_LAUNCH_DELAY = 2000L
+        // !!! ВАЖНО: Замените "com.your.wms.package.name" на реальный пакет вашего ВМС приложения !!!
+        const val WMS_APP_PACKAGE_NAME = "com.your.wms.package.name" // ЗАМЕНИТЬ!!!
+
+    }
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (!isGranted) {
-                binding.tvScanResult.text = "AndroidId problem"
+                binding.tvScanResult.text = "AndroidId problem: Permission Denied"
             }
         }
 
@@ -49,7 +67,7 @@ class MainActivity : AppCompatActivity() {
             requestPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
         }
 
-        setupBarcodeScanner()
+        initializeCsanreceiver() // инициализируем BroadcastReceiver
 
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -75,10 +93,6 @@ class MainActivity : AppCompatActivity() {
 
         barcodeScanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult?) {
-                val currentTime = System.currentTimeMillis()
-
-                if (currentTime - lastScanTime < scanDelay) return
-                lastScanTime = currentTime
 
                 result?.let {
                     val scannerBarcode = it.text

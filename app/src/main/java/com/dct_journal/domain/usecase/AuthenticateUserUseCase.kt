@@ -70,7 +70,6 @@ class AuthenticateUserUseCase(
                     return@flow // Прерываем flow
                 }
 
-
                 // 4. Дешифровка поля 'message', которое содержит зашифрованный JSON
                 val decryptedJsonPayload: String? = try {
                     if (isBase64(responseFromServer.message)) {

@@ -29,7 +29,7 @@ val appModule = module {
     single {
         Retrofit.Builder()
 //            .baseUrl("https://server.url/") // production url
-            .baseUrl("https://192.168.100.70:5000/") // local IP
+            .baseUrl("https://10.42.0.1:5000/") // local IP
             .client(getUnsafeOkHttpClient())
             .addConverterFactory(GsonConverterFactory.create())
             .build()

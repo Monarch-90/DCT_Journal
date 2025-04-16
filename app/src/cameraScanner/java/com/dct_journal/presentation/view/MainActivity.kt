@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
 //        binding.acBtnTestAppStart.setOnClickListener {
 //            appLauncherViewModel.launchApp("org.telegram.messenger")
 //        }
-//    }
+    }
 
     private fun setupBarcodeScanner() {
         val barcodeScanner: DecoratedBarcodeView = binding.scanBarcode
