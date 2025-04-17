@@ -25,18 +25,43 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
+        buildConfig = true
         compose = true
         viewBinding = true
+    }
+
+    /** 1. Определяем измерение (группу) для наших вариантов */
+    flavorDimensions.add("scannerType") // Любое название
+
+    /** 2. Определяем сами варианты (flavors) */
+    productFlavors {
+        create("cameraScanner") {
+            dimension = "scannerType"
+            applicationIdSuffix = ".camera" // Добавляет уникальный суффикс
+            versionNameSuffix = "-camera"   // Уникальная версия для этого варианта
+            buildConfigField("String", "SCANNER_TYPE", "\"Camera\"") // Поле для BuildConfig
+        }
+
+        create("hardwareScanner") {
+            dimension = "scannerType"
+            applicationIdSuffix = ".hardware"
+            versionNameSuffix = "-hardware"
+            buildConfigField("String", "SCANNER_TYPE", "\"Hardware\"") // Поле для BuildConfig
+        }
     }
 }
 

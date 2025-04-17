@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (!isGranted) {
-                binding.tvScanResult.text = "AndroidId problem"
+                binding.tvScanResult.text = "Permission problem"
             }
         }
 
@@ -43,12 +43,7 @@ class MainActivity : AppCompatActivity() {
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
-        }
-
+        requestRequiredPermissions()
         setupBarcodeScanner()
 
         lifecycleScope.launch {
@@ -66,6 +61,22 @@ class MainActivity : AppCompatActivity() {
 //        binding.acBtnTestAppStart.setOnClickListener {
 //            appLauncherViewModel.launchApp("org.telegram.messenger")
 //        }
+    }
+
+    private fun requestRequiredPermissions() {
+        // Request permission for READ_PHONE_STATE
+//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
+//            != PackageManager.PERMISSION_GRANTED
+//        ) {
+//            requestPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+//        }
+
+        // Request permission for CAMERA
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     private fun setupBarcodeScanner() {
