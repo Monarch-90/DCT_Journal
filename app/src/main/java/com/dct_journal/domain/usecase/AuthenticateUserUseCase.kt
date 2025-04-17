@@ -2,6 +2,7 @@ package com.dct_journal.domain.usecase
 
 import android.util.Base64
 import android.util.Log
+import com.dct_journal.Constants
 import com.dct_journal.data.network.model.AuthResponse
 import com.dct_journal.data.repository.AuthRepository
 import com.dct_journal.util.AESEncryptionUtil
@@ -15,15 +16,6 @@ class AuthenticateUserUseCase(
     private val repository: AuthRepository,
     private val encryptionUtil: AESEncryptionUtil,
 ) {
-
-    // Константы для статусов ответа сервера (должны совпадать с сервером)
-    private object ServersStatus {
-        const val OK = "ok"
-        const val DEVICE_NOT_FOUND = "device_not_found"
-        const val USER_NOT_FOUND = "user_not_found"
-        const val USER_INVALID_PREFIX = "user_invalid_prefix"
-        const val ERROR = "error" // Общая ошибка
-    }
 
     // Тег для логов
     private val tag = "AuthenticateUseCase"
@@ -123,10 +115,10 @@ class AuthenticateUserUseCase(
 
 
                 // 6. Анализ статуса и формирование сообщения для UI
-                val status = decryptedData.get("status")?.asString ?: ServersStatus.ERROR
+                val status = decryptedData.get("status")?.asString ?: Constants.ERROR
 
                 when (status) {
-                    ServersStatus.OK -> {
+                    Constants.OK -> {
                         val userLogin = decryptedData.get("userLogin")?.asString ?: "???"
                         val deviceId = decryptedData.get("deviceId")?.asString ?: "???"
                         displayMessage =
@@ -138,7 +130,7 @@ class AuthenticateUserUseCase(
                         )
                     }
 
-                    ServersStatus.DEVICE_NOT_FOUND -> {
+                    Constants.DEVICE_NOT_FOUND -> {
                         val userLogin = decryptedData.get("userLogin")?.asString ?: "???"
                         val deviceId = decryptedData.get("deviceId")?.asString ?: "???"
                         displayMessage =
@@ -150,7 +142,7 @@ class AuthenticateUserUseCase(
                         )
                     }
 
-                    ServersStatus.USER_NOT_FOUND, ServersStatus.USER_INVALID_PREFIX -> {
+                    Constants.USER_NOT_FOUND, Constants.USER_INVALID_PREFIX -> {
                         // Берём сообщение об ошибке из JSON
                         displayMessage =
                             decryptedData.get("message")?.asString ?: "Ошибка пользователя"
