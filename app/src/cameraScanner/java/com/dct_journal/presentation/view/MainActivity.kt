@@ -1,6 +1,7 @@
 package com.dct_journal.presentation.view
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
@@ -11,10 +12,10 @@ import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.dct_journal.Constants
 import com.dct_journal.databinding.ActivityMainBinding
 import com.dct_journal.presentation.view_model.AppLauncherViewModel
 import com.dct_journal.presentation.view_model.MainViewModel
-import com.google.zxing.ResultPoint
 import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
@@ -30,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private val appLauncherViewModel: AppLauncherViewModel by viewModel()
     private var lastScanTime: Long = 0
     private val scanDelay = 1000L
+    private val tag = "MainActivityCamera"
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -45,32 +47,10 @@ class MainActivity : AppCompatActivity() {
 
         requestRequiredPermissions()
         setupBarcodeScanner()
-
-        lifecycleScope.launch {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                mainViewModel.authResult.collectLatest { response ->
-                    response?.let {
-                        Log.d("Decryption", "Дешифрованное сообщение: ${it.message}")
-                        binding.tvScanResult.text = it.message
-                    }
-                }
-            }
-        }
-
-        // Запуск ВМС
-//        binding.acBtnTestAppStart.setOnClickListener {
-//            appLauncherViewModel.launchApp("org.telegram.messenger")
-//        }
+        observeViewModel()
     }
 
     private fun requestRequiredPermissions() {
-        // Request permission for READ_PHONE_STATE
-//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
-//            != PackageManager.PERMISSION_GRANTED
-//        ) {
-//            requestPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
-//        }
-
         // Request permission for CAMERA
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
@@ -91,31 +71,69 @@ class MainActivity : AppCompatActivity() {
                 if (currentTime - lastScanTime < scanDelay) return
                 lastScanTime = currentTime
 
-                result?.let {
-                    val scannerBarcode = it.text
-                    val androidID = getAndroidID()
-                    Log.d("BarcodeScanner", "Распознан штрихкод: $scannerBarcode")
-                    if (androidID != "unknown") {
-                        Log.d(
-                            "BarcodeScanner",
-                            "Отправка данных с Android Id: $androidID и штрихкодом: $scannerBarcode"
-                        )
-                        mainViewModel.authenticate(androidID, scannerBarcode)
+                result?.text?.let { scannedText ->
+                    Log.d(tag, "Распознан штрихкод: $scannedText")
+
+                    if (scannedText == Constants.SECRET_BARCODE) {
+                        Log.i(tag, "Обнаружен секретный код! Запуск RegistrationActivity")
+
+                        val intent = Intent(this@MainActivity, RegistrationActivity::class.java)
+                        startActivity(intent)
+                        return
                     } else {
-                        Log.e("BarcodeScanner", "Android ID не удалось получить")
-                        binding.tvScanResult.text = "Cann't take AndroidId"
+                        val androidId = getAndroidId()
+
+                        if (androidId != "Не удалось получить ID" && !androidId.startsWith("Ошибка")) {
+                            Log.d(
+                                tag,
+                                "Отправка данных аутентификации: $androidId и штрихкодом: $scannedText"
+                            )
+                            mainViewModel.authenticate(androidId, scannedText)
+                        } else {
+                            Log.e(tag, "Не удалось получить Android ID")
+                            binding.tvScanResult.text = "Ошибка: Не удалось получить ID устройства"
+                        }
                     }
                 }
-            }
-
-            override fun possibleResultPoints(resultPoints: MutableList<ResultPoint>?) {
-                // Это можно использовать для отображения точек сканирования на экране, если нужно
             }
         })
     }
 
-    private fun getAndroidID(): String {
-        return Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.authResult.collectLatest { response ->
+                    response?.let {
+                        Log.d(tag, "Получен результат аутентификации для UI: ${it.message}")
+                        binding.tvScanResult.text = it.message
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getAndroidId(): String {
+        return try {
+            Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+                ?: "Не удалось получить ID"
+        } catch (e: Exception) {
+            Log.e(tag, "Исключение при получении Android ID: ${e.message}", e)
+            "Ошибка получения ID"
+        }
+    }
+
+    // --- Управление жизненным циклом сканера (важно для камеры) ---
+    override fun onResume() {
+        super.onResume()
+        // binding не может быть null здесь, если используется правильный lifecycle
+        _binding?.scanBarcode?.resume() // Возобновляем сканер при возвращении на экран
+        Log.d(tag, "onResume: сканер возобновлен")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        _binding?.scanBarcode?.pause() // Ставим сканер на паузу при уходе с экрана
+        Log.d(tag, "onPause: сканер поставлен на паузу")
     }
 
     override fun onDestroy() {
