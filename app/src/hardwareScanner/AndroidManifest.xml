@@ -3,10 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.dct_journal">
 
-    <uses-feature
-        android:name="android.hardware"
-        android:required="false" />
-
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application

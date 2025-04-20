@@ -5,10 +5,13 @@ import com.dct_journal.data.network.getUnsafeOkHttpClient
 import com.dct_journal.data.repository.AuthRepository
 import com.dct_journal.data.repository.AuthRepositoryImpl
 import com.dct_journal.domain.usecase.AuthenticateUserUseCase
+import com.dct_journal.domain.usecase.RegisterDeviceUseCase
 import com.dct_journal.presentation.view_model.AppLauncherViewModel
 import com.dct_journal.presentation.view_model.MainViewModel
+import com.dct_journal.presentation.view_model.RegistrationViewModel
 import com.dct_journal.util.AESEncryptionUtil
 import okhttp3.OkHttpClient
+import org.koin.android.ext.koin.androidApplication
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 import retrofit2.Retrofit
@@ -25,7 +28,7 @@ val appModule = module {
             .build()
     }
 
-    // Retrofit (надстройка над OkHttp) — для реализации API-клиента и отправки данных на сервер (для тестирования - IP моего ноутбука)
+    // Retrofit (надстройка над OkHttp) — для реализации API-клиента и отправки данных на сервер (для тестирования - IP ноутбука)
     single {
         Retrofit.Builder()
 //            .baseUrl("https://server.url/") // production url
@@ -41,10 +44,14 @@ val appModule = module {
     // Репозиторий авторизации пользователя
     single<AuthRepository> { AuthRepositoryImpl(get()) }
 
-    // Use Case для авторизации пользователя
+    // Use Cases для авторизации пользователя и добавления ТСД в БД
     single { AuthenticateUserUseCase(get(), get()) }
+    single { RegisterDeviceUseCase(get()) }
 
     // ViewModel
     viewModel { MainViewModel(get()) }
     viewModel { AppLauncherViewModel(get()) } // Для запуска ВМС
+
+    // Передаем ContentResolver из контекста приложения
+    viewModel { RegistrationViewModel(get(), androidApplication().contentResolver) }
 }

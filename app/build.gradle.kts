@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.dct_journal"
-        minSdk = 26
+        minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -102,4 +102,10 @@ dependencies {
 
     /** OkHttp (Transitively уже есть, но можно указать явно) */
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    /** Constraint Layout */
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+
+    /** Material Components */
+    implementation("com.google.android.material:material:1.12.0")
 }
