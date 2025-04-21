@@ -1,5 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.DCT_journal" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">#201E25</item>
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    </style>
 
-    <style name="Theme.Dct_journal" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="My.Theme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        // Принудительно устанавливаем светлую тему для всего приложения
+        <item name="android:forceDarkAllowed" tools:ignore="NewApi">false</item>
+
+        <item name="android:statusBarColor">#B4B4B4</item>
+    </style>
+
 </resources>

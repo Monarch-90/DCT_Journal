@@ -3,7 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.dct_journal">
 
-    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="com.symbol.datawedge.api.ENABLE_DATAWEDGE"/>
 
     <application
         android:name=".ScanDCTApplication"
@@ -14,7 +15,6 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/dct_journal_terminal_with_wifi_network"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
         tools:targetApi="31">
 
         <activity

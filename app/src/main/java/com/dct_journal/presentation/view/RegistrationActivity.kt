@@ -37,8 +37,8 @@ class RegistrationActivity : AppCompatActivity() {
     }
 
     private fun setupViews() {
-        binding.buttonRegister.setOnClickListener {
-            val orderNumber = binding.editTextOrderNumber.text.toString().trim()
+        binding.btnRegister.setOnClickListener {
+            val orderNumber = binding.etOrderNumber.text.toString().trim()
             Log.d(tag, "Нажата кнопка регистрации, номер: '$orderNumber'")
             // Вызываем метод ViewModel для регистрации
             viewModel.registerDevice(orderNumber)
@@ -52,11 +52,11 @@ class RegistrationActivity : AppCompatActivity() {
                 viewModel.uiState.collect { state ->
                     Log.d(tag, "Обновление UI State: $state")
                     // Обновляем текстовое поле с Android ID
-                    binding.textViewAndroidIdValue.text = state.androidId
+                    binding.tvAndroidIdValue.text = state.androidId
 
                     // Показываем/скрываем ProgressBar
                     binding.progressBarRegistration.visibility = if (state.isLoading) View.VISIBLE else View.GONE
-                    binding.buttonRegister.isEnabled = !state.isLoading // Блокируем кнопку во время загрузки
+                    binding.btnRegister.isEnabled = !state.isLoading // Блокируем кнопку во время загрузки
 
                     // Показываем результат регистрации (если он есть)
                     state.registrationResult?.let { result ->

@@ -11,7 +11,7 @@ object Constants {
 
     /** MainActivity constants */
     // Действие Intent, указанное в настройках DataWedge вашего MC330M
-    const val DATAWEDGE_SCAN_ACTION = "com.dxexample.ACTION"
+    const val DATAWEDGE_SCAN_ACTION = "com.dwexample.ACTION"
 
     // Стандартный ключ для получения данных сканирования из Intent Extras
     const val DATAWEDGE_DATA_STRING_KEY = "com.symbol.datawedge.data_string"
