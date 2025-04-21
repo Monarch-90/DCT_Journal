@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">DCT Journal</string>
+    <string name="Отсканируйте_свой_бейдж">Отсканируйте свой бейдж</string>
+    <string name="Пример">Пример</string>
+    <string name="tv_Регистрация_ТСД">Регистрация ТСД</string>
+    <string name="tv_Android_ID_устройства">Android ID устройства:</string>
+    <string name="tv_Загрузка...">Загрузка...</string>
+    <string name="tv_Порядковый_номер">Порядковый номер:</string>
+    <string name="et_Введите_номер_ТСД">Введите номер ТСД</string>
+    <string name="Зарегистрировать">Зарегистрировать</string>
 </resources>
