@@ -114,75 +114,83 @@ class AuthenticateUserUseCase(
                 }
 
 
-                // 6. Анализ статуса и формирование сообщения для UI
+                // 6. Анализ статуса и формирование сообщения для UI (С ИЗМЕНЕНИЯМИ)
                 val status = decryptedData.get("status")?.asString ?: Constants.ERROR
+                // --- ИЗВЛЕКАЕМ ВРЕМЯ СЕРВЕРА (оно есть при OK и DEVICE_NOT_FOUND) ---
+                // Используем безопасное получение и даем заглушку "время?", если его нет
+                val serverTimestamp = decryptedData.get("serverTimestamp")?.asString ?: "время?"
+                // ------------------------------------------------------------------
 
                 when (status) {
                     Constants.OK -> {
                         val userLogin = decryptedData.get("userLogin")?.asString ?: "???"
-                        val deviceId = decryptedData.get("deviceId")?.asString ?: "???"
+                        val deviceIdentifier =
+                            decryptedData.get("deviceIdentifier")?.asString ?: "???"
                         displayMessage =
-                            "Исполнитель - $userLogin \nВход с терминала - №$deviceId" // Формат: "ЛОГИН / НОМЕР"
-                        finalSuccess = true // Единственный успешный случайный
+                            "Исполнитель: $userLogin\n\n" +
+                                    "Вход с терминала: $deviceIdentifier\n\n" + // Номер устройства
+                                    "Время операции: $serverTimestamp" // Добавляем время с сервера
+                        finalSuccess = true // Успех
                         Log.i(
                             tag,
-                            "Статус ОК: Пользователь '$userLogin', Устройство '$deviceId'. Full success."
+                            "Статус ОК: Пользователь '$userLogin', Устройство '$deviceIdentifier', Время '$serverTimestamp'. Full success."
                         )
                     }
 
                     Constants.DEVICE_NOT_FOUND -> {
                         val userLogin = decryptedData.get("userLogin")?.asString ?: "???"
-                        val deviceId = decryptedData.get("deviceId")?.asString ?: "???"
+                        val deviceIdentifier = decryptedData.get("deviceIdentifier")?.asString
+                            ?: "???" // Сам Android ID
                         displayMessage =
-                            "Исполнитель - $userLogin \nВход с терминала - №$deviceId" // Формат: "ЛОГИН / AndroidId"
-                        finalSuccess = false // Неуспех, т.к. устройство не найдено
+                            "Исполнитель: $userLogin\n\n" +
+                                    "Вход с терминала - ID: $deviceIdentifier\n" +
+                                    "(Добавьте устройство в базу данных)\n\n" + // Указываем что не найден
+                                    "Время операции: $serverTimestamp" // Добавляем время с сервера
+                        finalSuccess = false // Неуспех для WMS
                         Log.w(
                             tag,
-                            "Статус DEVICE_NOT_FOUND: Пользователь '$userLogin', Устройство '$deviceId'."
+                            "Статус DEVICE_NOT_FOUND: Пользователь '$userLogin', Устройство '$deviceIdentifier', Время '$serverTimestamp'."
                         )
                     }
 
-                    Constants.USER_NOT_FOUND, Constants.USER_INVALID_PREFIX -> {
-                        // Берём сообщение об ошибке из JSON
+                    // Constants.USER_NOT_FOUND - убран с сервера
+                    Constants.USER_INVALID_PREFIX -> {
                         displayMessage =
-                            decryptedData.get("message")?.asString ?: "Ошибка пользователя"
-                        finalSuccess = false // Неуспех
+                            decryptedData.get("message")?.asString ?: "Ошибка формата ШК"
+                        // Можно добавить время и сюда, если сервер будет его присылать для этого статуса
+                        // val ts = decryptedData.get("serverTimestamp")?.asString
+                        // if (ts != null) displayMessage += "\n\n$ts"
+                        finalSuccess = false
                         Log.w(tag, "Статус $status: $displayMessage")
                     }
 
-                    else -> { // ServiceStatus.ERROR или неизвестный статус
+                    else -> { // Constants.ERROR или неизвестный статус
                         displayMessage =
                             decryptedData.get("message")?.asString ?: "Неизвестная ошибка сервера"
-                        finalSuccess = false // Неуспех
+                        // Можно добавить время и сюда, если сервер будет его присылать для этого статуса
+                        // val ts = decryptedData.get("serverTimestamp")?.asString
+                        // if (ts != null) displayMessage += "\n\n$ts"
+                        finalSuccess = false
                         Log.e(tag, "Неизвестный или ошибочный статус '$status': $displayMessage")
                     }
                 }
 
-                // 7. Эмитим результат в ViewModel
-                // finalSuccess определяет успех всей операции
-                // displayMessage - строка для отображения в UI
+                // 7. Эмитим результат в ViewModel (структура AuthResponse)
                 Log.d(tag, "Эмитим результат: Success=$finalSuccess, Message='$displayMessage'")
                 emit(
                     AuthResponse(
-                        success = finalSuccess,
-                        message = displayMessage,
-                        iv = responseFromServer.iv
+                        success = finalSuccess, // Этот флаг для ViewModel (запускать WMS или нет)
+                        message = displayMessage, // Готовая строка для UI
+                        iv = responseFromServer.iv // IV нужен, т.к. модель та же
                     )
                 )
             } catch (e: Exception) {
                 // Ловим общие ошибки (сеть, шифрование на клиенте и т.д)
                 Log.e(tag, "Критическая ошибка в UseCase: ${e.message}", e)
-                displayMessage =
-                    "Критическая ошибка: ${e.localizedMessage}" // Показать сообщение об ошибке
-                emit(
-                    AuthResponse(
-                        success = false,
-                        message = displayMessage,
-                        iv = ""
-                    )
-                ) // IV неизвестен или неважен
+                displayMessage = "Критическая ошибка: ${e.localizedMessage}"
+                emit(AuthResponse(success = false, message = displayMessage, iv = ""))
             }
-        }
+        } // конец flow
 
     // Утилита для проверки Base64
     private fun isBase64(input: String?): Boolean {
