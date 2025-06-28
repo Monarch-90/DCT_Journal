@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name[ru_RU]=Запуск web_server
+Comment=Запуск виртуального окружения и сервера
+Exec=gnome-terminal -- bash -c "source '/home/gg_wp/AndroidStudioProjects/dct_journal/avetis.server/venv/bin/activate'; cd '/home/gg_wp/AndroidStudioProjects/dct_journal/client_jurnal_registracii_(web_version)'; python secure_web_server.py; exec bash"
+Icon=server
+Terminal=false
+Type=Application

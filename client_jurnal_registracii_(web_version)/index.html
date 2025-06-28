@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Журнал регистрации</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-layout">
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <h2>Навигация</h2>
+            </div>
+            <nav id="main-nav"></nav>
+        </aside>
+
+        <div class="content-wrapper">
+            <header>
+                <div class="title-section">
+                    <h1>Журнал регистрации</h1>
+                    <p id="page-subtitle">Последние 30 дней</p>
+                </div>
+                <div class="search-section">
+                     <input type="search" id="search-box" placeholder="Поиск по всем полям...">
+                </div>
+                <div id="status-container">
+                    <span id="status-indicator"></span>
+                    <span id="status-text">Подключение...</span>
+                </div>
+            </header>
+
+            <div class="table-header-sticky">
+                <table class="log-table log-table--header">
+                    <colgroup><col style="width: 11%;"><col style="width: 12%;"><col style="width: 40%;"><col style="width: 15%;"><col style="width: 15%;"></colgroup>
+                    <thead>
+                        <tr><th>Время</th><th>Тип</th><th>ФИО</th><th>ТСД</th><th>Примечание</th></tr>
+                    </thead>
+                </table>
+            </div>
+            
+            <main id="main-content">
+                <table class="log-table log-table--body">
+                    <colgroup><col style="width: 11%;"><col style="width: 12%;"><col style="width: 40%;"><col style="width: 15%;"><col style="width: 15%;"></colgroup>
+                    <tbody id="log-body"></tbody>
+                </table>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
