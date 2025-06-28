@@ -5,11 +5,14 @@ import com.dct_journal.data.network.getUnsafeOkHttpClient
 import com.dct_journal.data.repository.AuthRepository
 import com.dct_journal.data.repository.AuthRepositoryImpl
 import com.dct_journal.domain.usecase.AuthenticateUserUseCase
+import com.dct_journal.domain.usecase.DeregisterUseCase
 import com.dct_journal.domain.usecase.RegisterDeviceUseCase
 import com.dct_journal.presentation.view_model.AppLauncherViewModel
+import com.dct_journal.presentation.view_model.DeregistrationViewModel
 import com.dct_journal.presentation.view_model.MainViewModel
 import com.dct_journal.presentation.view_model.RegistrationViewModel
 import com.dct_journal.util.AESEncryptionUtil
+import com.dct_journal.util.SharedPreferencesManager
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidApplication
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -47,11 +50,20 @@ val appModule = module {
     // Use Cases для авторизации пользователя и добавления ТСД в БД
     single { AuthenticateUserUseCase(get(), get()) }
     single { RegisterDeviceUseCase(get()) }
+    single { DeregisterUseCase(get(), get()) } // Второй get() для encryptionUtil
+
+    single { SharedPreferencesManager(androidApplication().applicationContext) }
 
     // ViewModel
-    viewModel { MainViewModel(get()) }
+    viewModel { MainViewModel(get(), get()) }
     viewModel { AppLauncherViewModel(get()) } // Для запуска ВМС
 
     // Передаем ContentResolver из контекста приложения
     viewModel { RegistrationViewModel(get(), androidApplication().contentResolver) }
+    viewModel { params -> // Используем params для передачи applicationContext из Activity
+        DeregistrationViewModel(
+            deregisterUseCase = get(),
+            sharedPreferencesManager = get()
+        )
+    }
 }

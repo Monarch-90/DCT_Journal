@@ -3,8 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.dct_journal">
 
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="com.symbol.datawedge.api.ENABLE_DATAWEDGE"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="com.symbol.datawedge.api.ENABLE_DATAWEDGE" />
 
     <application
         android:name=".ScanDCTApplication"
@@ -19,13 +19,12 @@
 
         <activity
             android:name="com.dct_journal.presentation.view.MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+            android:exported="false" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+        <activity
+            android:name="com.dct_journal.presentation.view.DeregistrationActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>

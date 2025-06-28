@@ -4,6 +4,7 @@ import android.util.Log
 import com.dct_journal.data.network.ApiService
 import com.dct_journal.data.network.model.AuthRequest
 import com.dct_journal.data.network.model.AuthResponse
+import com.dct_journal.data.network.model.DeregisterRequest
 import com.dct_journal.data.network.model.RegisterRequest
 import com.dct_journal.data.network.model.RegisterResponse
 
@@ -13,45 +14,40 @@ class AuthRepositoryImpl(
 
     private val tag = "AuthRepository"
 
-    override suspend fun authenticateUser(
-        androidId: String,
-        barcode: String,
-        iv: String,
-    ): AuthResponse {
-
+    override suspend fun authenticateUser(request: AuthRequest): AuthResponse {
         return try {
-            // Создание запроса
-            val request = AuthRequest(
-                androidId = androidId, barcode = barcode, iv = iv
-            )
-
-            Log.d(tag, "Отправляю запрос на сервер с данными: $request")
-
-            // Отправка запроса к серверу
+            Log.d(tag, "Отправляю запрос /scan: $request")
             val response = apiService.authenticateUser(request)
-            Log.d(tag, "Получен ответ от сервера: $response")
+            Log.d(tag, "Получен ответ от /scan: $response")
             response
         } catch (e: Exception) {
-            Log.e(tag, "Ошибка в запросе: ${e.message}", e)
-            // Возвращаем ошибку в стандартной структуре AuthResponse
-            AuthResponse(false, "Ошибка сервера: ${e.message}", "IV: $iv")
+            Log.e(tag, "Ошибка в запросе /scan: ${e.message}", e)
+            AuthResponse(false, "Ошибка сети: ${e.message}", "")
         }
     }
 
-    override suspend fun registerDevice(
-        request: RegisterRequest,
-    ): RegisterResponse {
-
+    override suspend fun registerDevice(request: RegisterRequest): RegisterResponse {
         return try {
-            Log.d(tag, "Отправляю запрос registerDevice: $request")
+            Log.d(tag, "Отправляю запрос /add_device: $request")
             val response = apiService.registerDevice(request)
-
-            Log.d(tag, "Получен ответ registerDevice: $response")
+            Log.d(tag, "Получен ответ от /add_device: $response")
             response
         } catch (e: Exception) {
-            Log.e(tag, "Ошибка в запросе registerDevice: ${e.message}", e)
-            // Возвращаем свою структуру ошибки, соответствующую RegisterResponse
+            Log.e(tag, "Ошибка в запросе /add_device: ${e.message}", e)
             RegisterResponse(false, "Ошибка сети: ${e.message}")
+        }
+    }
+
+    override suspend fun deregisterDevice(request: DeregisterRequest): AuthResponse {
+        return try {
+            Log.d(tag, "Отправляю запрос /deregister: $request")
+            val response = apiService.deregisterDevice(request)
+            Log.d(tag, "Получен ответ от /deregister: $response")
+            response
+        } catch (e: Exception) {
+            Log.e(tag, "Ошибка в запросе /deregister: ${e.message}", e)
+            // Возвращаем структуру AuthResponse, т.к. сервер ее отдает
+            AuthResponse(false, "Ошибка сети (дерегистрация): ${e.message}", "")
         }
     }
 }
