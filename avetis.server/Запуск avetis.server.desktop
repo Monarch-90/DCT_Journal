@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name[ru_RU]=Запуск avetis.server
+Comment=Запуск виртуального окружения и сервера
+Exec=gnome-terminal -- bash -c "source '/home/gg_wp/AndroidStudioProjects/dct_journal/avetis.server/venv/bin/activate'; cd '/home/gg_wp/AndroidStudioProjects/dct_journal/avetis.server'; python3 run.py; exec bash"
+Icon=server
+Terminal=false
+Type=Application
+

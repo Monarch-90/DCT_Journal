@@ -1,0 +1,2 @@
+source '/home/gg_wp/AndroidStudioProjects/dct_journal/avetis.server/venv/bin/activate' - войти в ВП
+python3 run.py - запустить сервер

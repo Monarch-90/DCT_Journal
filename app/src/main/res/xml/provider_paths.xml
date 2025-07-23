@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Разрешаем делиться файлами из кэша приложения -->
+    <cache-path
+        name="shared_cache"
+        path="." />
+    <!-- Разрешаем делиться файлами из папки "Загрузки" приложения -->
+    <external-files-path
+        name="external_downloads"
+        path="Download" />
+</paths>

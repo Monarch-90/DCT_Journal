@@ -6,6 +6,7 @@ import com.dct_journal.data.network.model.AuthResponse
 import com.dct_journal.data.network.model.DeregisterRequest
 import com.dct_journal.data.network.model.RegisterRequest
 import com.dct_journal.data.network.model.RegisterResponse
+import com.dct_journal.data.network.model.StatusUpdateRequest
 import retrofit2.http.Body
 import retrofit2.http.POST
 
@@ -21,4 +22,8 @@ interface ApiService {
 
     @POST(Constants.API_SERVER_ENDPOINT_DEREGISTER)
     suspend fun deregisterDevice(@Body request: DeregisterRequest): AuthResponse
+
+    // Метод для отправки статуса ТСД на сервер
+    @POST("api/v1/terminal/status")
+    suspend fun sendStatus(@Body request: StatusUpdateRequest): Unit
 }

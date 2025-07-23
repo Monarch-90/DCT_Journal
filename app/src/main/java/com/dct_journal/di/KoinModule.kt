@@ -1,9 +1,13 @@
 package com.dct_journal.di
 
+import com.dct_journal.Constants
 import com.dct_journal.data.network.ApiService
+import com.dct_journal.data.network.SocketIoManager
 import com.dct_journal.data.network.getUnsafeOkHttpClient
 import com.dct_journal.data.repository.AuthRepository
 import com.dct_journal.data.repository.AuthRepositoryImpl
+import com.dct_journal.data.repository.DeviceRepository
+import com.dct_journal.data.repository.DeviceRepositoryImpl
 import com.dct_journal.domain.usecase.AuthenticateUserUseCase
 import com.dct_journal.domain.usecase.DeregisterUseCase
 import com.dct_journal.domain.usecase.RegisterDeviceUseCase
@@ -25,6 +29,9 @@ val appModule = module {
     // Представляем утилиту шифрования AES
     single { AESEncryptionUtil() }
 
+    // Менеджер для работы с Socket.IO
+    single { SocketIoManager() }
+
     // OkHttp клиент (бех него Retrofit не работает)
     single {
         OkHttpClient.Builder()
@@ -35,7 +42,7 @@ val appModule = module {
     single {
         Retrofit.Builder()
 //            .baseUrl("https://server.url/") // production url
-            .baseUrl("https://10.42.0.1:5000/") // local IP
+            .baseUrl(Constants.MY_IP_ADDRESS) // local IP
             .client(getUnsafeOkHttpClient())
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -46,6 +53,9 @@ val appModule = module {
 
     // Репозиторий авторизации пользователя
     single<AuthRepository> { AuthRepositoryImpl(get()) }
+
+    // Репозиторий для управления устройством
+    single<DeviceRepository> { DeviceRepositoryImpl(get()) }
 
     // Use Cases для авторизации пользователя и добавления ТСД в БД
     single { AuthenticateUserUseCase(get(), get()) }

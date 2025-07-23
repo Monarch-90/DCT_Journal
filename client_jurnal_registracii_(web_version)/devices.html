@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление ТСД</title>
+    <link rel="stylesheet" href="static/css/main.css">
+    <link rel="stylesheet" href="static/css/devices.css">
+</head>
+<body>
+    <div class="main-layout">
+        <aside id="sidebar">
+            </aside>
+
+        <div class="content-wrapper">
+            <header>
+                <div class="title-section">
+                    <h1>Управление ТСД</h1>
+                    <p id="page-subtitle"></p>
+                    </div>
+                
+                <div class="search-section">
+                    <input type="search" id="search-box" placeholder="Поиск по номеру или ID...">
+                </div>
+                
+                <div class="header-actions">
+                    <button id="request-status-all-btn" class="header-button">Обновить статус</button>
+                </div>
+
+                <div id="status-container">
+                    <span id="status-indicator"></span>
+                    <span id="status-text">Подключение...</span>
+                </div>
+            </header>
+            
+            <main id="main-content">
+                <div id="device-grid">
+                    </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="static/js/shared.js"></script>
+    <script src="static/js/devices.js"></script>
+</body>
+</html>

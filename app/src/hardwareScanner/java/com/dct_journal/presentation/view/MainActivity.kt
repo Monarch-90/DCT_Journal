@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
     private var wmsLaunchedThisSession: Boolean = false
     private var navigationToDeregJob: Job? = null
 
-    private lateinit var deregistrationResultLauncher: ActivityResultLauncher<Intent> // Изменено для lateinit
+    private var deregistrationResultLauncher: ActivityResultLauncher<Intent>? = null
 
     // Для аппаратного сканера (Zebra DataWedge & Point Mobile)
     private var scanReceiver: BroadcastReceiver? = null
@@ -207,7 +207,7 @@ class MainActivity : AppCompatActivity() {
             putExtra(Constants.EXTRA_ANDROID_ID, deviceAndroidId)
             putExtra(Constants.EXTRA_ORDER_NUMBER_DISPLAY, orderNumberForDereg)
         }
-        deregistrationResultLauncher.launch(intent) // Используем lateinit поле
+        deregistrationResultLauncher?.launch(intent) // Используем lateinit поле
     }
 
     private fun registerScanReceiver() {

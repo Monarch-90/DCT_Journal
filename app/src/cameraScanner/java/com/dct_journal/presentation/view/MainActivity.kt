@@ -3,13 +3,17 @@ package com.dct_journal.presentation.view
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -37,7 +41,7 @@ class MainActivity : AppCompatActivity() {
     private val appLauncherViewModel: AppLauncherViewModel by viewModel()
     private val sharedPreferencesManager: SharedPreferencesManager by inject()
 
-    private val tag = "MainActivityCamera" // Или ваш соответствующий тег
+    private val tag = "MainActivityCamera"
 
     private var barcodeView: DecoratedBarcodeView? = null
     private var lastScanTime: Long = 0
@@ -48,16 +52,30 @@ class MainActivity : AppCompatActivity() {
 
     private var deregistrationResultLauncher: ActivityResultLauncher<Intent>? = null
 
-    // Запрос разрешения на камеру (примерная реализация, адаптируйте под свой код)
+    // После получения разрешения на хранилище, проверяем разрешение на установку
+    private val requestStoragePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                Log.i(tag, "Разрешение на хранилище ПОЛУЧЕНО.")
+                // Запускаем проверку следующего разрешения
+                checkAndRequestInstallPermission()
+            } else {
+                Log.w(tag, "Разрешение на хранилище ОТКЛОНЕНО.")
+                Toast.makeText(this, "Без разрешения на доступ к хранилищу обновления не будут скачиваться.", Toast.LENGTH_LONG).show()
+            }
+        }
+
+    // Начинаем с запроса на камеру
     private val requestCameraPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
                 Log.i(tag, "Camera permission GRANTED.")
-                initializeBarcodeScanner() // Инициализация после получения разрешения
+                initializeBarcodeScanner()
+                // Шаг 2: После получения разрешения на камеру, запрашиваем разрешение на хранилище
+                checkAndRequestStoragePermission()
             } else {
                 Log.w(tag, "Camera permission DENIED.")
                 binding.tvScanResult.text = "Ошибка: Необходимо разрешение на камеру!"
-                // Обработайте отказ в разрешении (например, покажите диалог или закройте функционал)
             }
         }
 
@@ -69,22 +87,43 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         Log.i(tag, "onCreate: View инициализирован")
 
-        barcodeView = binding.scanBarcode // Предполагая, что ID в XML такой
+        barcodeView = binding.scanBarcode
 
         deregistrationResultLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
             Log.d(tag, "Результат от DeregistrationActivity: ${result.resultCode}")
-            // onResume обработает сброс wmsLaunchedThisSession и обновление UI
-            // Передаем контекст и актуальное состояние SP во ViewModel
             mainViewModel.returnedFromDeregistrationOrAppResume(
                 sharedPreferencesManager.isDeregistrationModeActive()
             )
         }
 
-        setupBarcodeScannerWithPermissionCheck() // Для cameraScanner flavor
+        setupBarcodeScannerWithPermissionCheck()
         observeViewModel()
+
         Log.i(tag, "onCreate: Завершение")
+    }
+
+    private fun checkAndRequestStoragePermission() {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    Log.d(tag, "Разрешение на запись в хранилище уже есть.")
+                    // Если разрешение уже есть, сразу переходим к следующей проверке
+                    checkAndRequestInstallPermission()
+                }
+                else -> {
+                    Log.d(tag, "Запрос разрешения на запись в хранилище...")
+                    requestStoragePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }
+        } else {
+            // На Android 10+ разрешение на запись не нужно, сразу проверяем установку
+            checkAndRequestInstallPermission()
+        }
     }
 
     private fun setupBarcodeScannerWithPermissionCheck() {
@@ -95,20 +134,22 @@ class MainActivity : AppCompatActivity() {
         ) {
             Log.d(tag, "Разрешение на камеру уже есть. Инициализация сканера.")
             initializeBarcodeScanner()
+            // Если разрешение на камеру уже есть, все равно запускаем проверку остальных разрешений
+            checkAndRequestStoragePermission()
         } else {
             Log.d(tag, "Разрешения на камеру нет. Запрос разрешения.")
+            // Запускаем всю цепочку, начиная с запроса на камеру
             requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
     private fun initializeBarcodeScanner() {
-        // Ваша логика инициализации сканера
         barcodeView?.setStatusText("Отсканируйте ШК для аутентификации")
         barcodeView?.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult?) {
                 val currentTime = System.currentTimeMillis()
                 if (mainViewModel.uiState.value.isLoading || wmsLaunchedThisSession || currentTime - lastScanTime < scanDelay) {
-                    return // Игнорируем сканы, если идет загрузка, WMS запущен или слишком часто
+                    return
                 }
                 lastScanTime = currentTime
                 result?.text?.let { scannedText ->
@@ -116,36 +157,26 @@ class MainActivity : AppCompatActivity() {
                         Log.i(tag, "Отсканирован ШК: $scannedText")
 
                         if (scannedText == Constants.SECRET_BARCODE) {
-                            Log.i(
-                                tag,
-                                "Обнаружен секретный ШК (${Constants.SECRET_BARCODE}). Переход на RegistrationActivity."
-                            )
-                            val intent = Intent(this@MainActivity, RegistrationActivity::class.java)
-                            startActivity(intent)
-                            return // Важно: выходим из колбэка, чтобы не пытаться аутентифицировать секретный ШК
+                            Log.i(tag, "Обнаружен секретный ШК. Переход на RegistrationActivity.")
+                            startActivity(Intent(this@MainActivity, RegistrationActivity::class.java))
+                            return
                         }
 
-                        val currentDeviceId = getAndroidId() // Ваш метод получения Android ID
-                        if (currentDeviceId.isNotBlank() && currentDeviceId != "Не удалось получить ID" && !currentDeviceId.startsWith(
-                                "Ошибка"
-                            )
-                        ) {
+                        val currentDeviceId = getAndroidId()
+                        if (currentDeviceId.isNotBlank() && !currentDeviceId.startsWith("Ошибка")) {
                             mainViewModel.authenticate(currentDeviceId, scannedText)
                         } else {
-                            val errorMsg =
-                                "Критическая ошибка: Не удалось получить ID устройства для аутентификации!"
+                            val errorMsg = "Критическая ошибка: Не удалось получить ID устройства!"
                             binding.tvScanResult.text = errorMsg
                             Log.e(tag, "$errorMsg Получено: '$currentDeviceId'")
                         }
                     }
                 }
             }
-
             override fun possibleResultPoints(resultPoints: MutableList<com.google.zxing.ResultPoint>?) {}
         })
     }
 
-    // Ваш метод получения Android ID
     private fun getAndroidId(): String {
         return try {
             Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
@@ -156,180 +187,115 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewModel.uiState.collectLatest { state: MainScreenState ->
                     Log.d(tag, "UI State Updated: $state")
-                    binding.tvScanResult.text =
-                        state.displayMessage // Обновляем текст всегда из state
+                    binding.tvScanResult.text = state.displayMessage
 
                     if (state.triggerWmsLaunchAndDeregistration && !wmsLaunchedThisSession) {
                         Log.i(tag, "Состояние: Запуск WMS и подготовка к дерегистрации...")
                         wmsLaunchedThisSession = true
-                        binding.tvScanResult.text = "Запуск WMS..." // Временное сообщение
+                        binding.tvScanResult.text = "Запуск WMS..."
 
                         val userLoginDisp = state.userLoginForDeregDisplay
-                        val androidIdForDereg = state.androidIdForDereg // Android ID
-                        val orderNumDisp = state.orderNumberForDeregDisplay // Device Identifier
+                        val androidIdForDereg = state.androidIdForDereg
+                        val orderNumDisp = state.orderNumberForDeregDisplay
 
                         if (androidIdForDereg != null) {
-                            sharedPreferencesManager.setDeregistrationState(
-                                true,
-                                userLoginDisp, androidIdForDereg, orderNumDisp
-                            )
-                            Log.d(
-                                tag,
-                                "SP для дерегистрации установлены: User='$userLoginDisp', Device(AndroidID)='$androidIdForDereg', Order(DevIdentifier)='$orderNumDisp'"
-                            )
-
+                            sharedPreferencesManager.setDeregistrationState(true, userLoginDisp, androidIdForDereg, orderNumDisp)
                             appLauncherViewModel.launchApp(Constants.WMS_APP_PACKAGE_NAME)
-                            Log.d(tag, "WMS запущен (с последующей дерегистрацией).")
-                            mainViewModel.wmsHasBeenLaunched() // Сообщаем ViewModel, что WMS был запущен (но триггер на дерегистрацию он сам не сбрасывает)
+                            mainViewModel.wmsHasBeenLaunched()
 
-                            navigationToDeregJob?.cancel() // Отменяем предыдущую задачу, если есть
+                            navigationToDeregJob?.cancel()
                             navigationToDeregJob = lifecycleScope.launch {
                                 delay(Constants.DEREGISTRATION_ACTIVITY_LAUNCH_DELAY)
-
-                                // Дополнительная проверка, что мы все еще должны переходить
                                 if (sharedPreferencesManager.isDeregistrationModeActive() && wmsLaunchedThisSession) {
-                                    Log.i(tag, "Время вышло, переход на DeregistrationActivity.")
-                                    goToDeregistrationScreen(
-                                        userLoginDisp,
-                                        androidIdForDereg,
-                                        orderNumDisp
-                                    )
-                                    // После успешного перехода и возврата, onResume обработает сброс состояний.
-                                    // Сообщаем VM, что навигация была инициирована, чтобы он сбросил свои данные для дерег.
+                                    goToDeregistrationScreen(userLoginDisp, androidIdForDereg, orderNumDisp)
                                     mainViewModel.deregistrationNavigationInitiated()
-                                } else {
-                                    Log.w(
-                                        tag,
-                                        "Отмена перехода на DeregistrationActivity: SP не активен или WMS сессия была сброшена."
-                                    )
                                 }
                             }
                         } else {
-                            Log.e(
-                                tag,
-                                "Ошибка: androidIdForDereg is null при triggerWmsLaunchAndDeregistration."
-                            )
-                            binding.tvScanResult.text = "Ошибка подготовки к дерегистрации!" // Обновляем сообщение об ошибке
-                            wmsLaunchedThisSession = false // Сбой, разрешаем новый скан
+                            Log.e(tag, "Ошибка: androidIdForDereg is null при triggerWmsLaunchAndDeregistration.")
+                            binding.tvScanResult.text = "Ошибка подготовки к дерегистрации!"
+                            wmsLaunchedThisSession = false
                         }
 
                     } else if (state.triggerWmsLaunchOnly && !wmsLaunchedThisSession) {
                         Log.i(tag, "Состояние: Только запуск WMS...")
                         wmsLaunchedThisSession = true
-                        // binding.tvScanResult.text = state.displayMessage // Уже установлено в начале collectLatest
-
                         appLauncherViewModel.launchApp(Constants.WMS_APP_PACKAGE_NAME)
-                        Log.d(tag, "WMS запущен (только WMS).")
-                        mainViewModel.wmsHasBeenLaunched() // Сообщаем ViewModel (он сбросит триггер triggerWmsLaunchOnly)
-                        // wmsLaunchedThisSession сбросится в onResume, когда вернемся из WMS
+                        mainViewModel.wmsHasBeenLaunched()
                     }
                 }
             }
         }
     }
 
-    private fun goToDeregistrationScreen(
-        userLoginForDisplay: String?,
-        deviceAndroidId: String?,
-        orderNumberForDereg: String?,
-    ) {
+    private fun goToDeregistrationScreen(userLoginForDisplay: String?, deviceAndroidId: String?, orderNumberForDereg: String?) {
         val intent = Intent(this, DeregistrationActivity::class.java).apply {
             putExtra(Constants.EXTRA_USER_LOGIN_DISPLAY, userLoginForDisplay)
-            putExtra(Constants.EXTRA_ANDROID_ID, deviceAndroidId) // Это Android ID
-            putExtra(
-                Constants.EXTRA_ORDER_NUMBER_DISPLAY,
-                orderNumberForDereg
-            ) // Это Device Identifier
+            putExtra(Constants.EXTRA_ANDROID_ID, deviceAndroidId)
+            putExtra(Constants.EXTRA_ORDER_NUMBER_DISPLAY, orderNumberForDereg)
         }
         deregistrationResultLauncher?.launch(intent)
-        // finish() здесь не нужен, он вызывается в onCreate/onResume перед этим методом, если переход безусловный
+    }
+
+    private fun checkAndRequestInstallPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val hasPermission = packageManager.canRequestPackageInstalls()
+            if (!hasPermission) {
+                Log.w(tag, "Разрешение на установку пакетов отсутствует. Запрашиваем...")
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            } else {
+                Log.d(tag, "Разрешение на установку пакетов уже есть.")
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         val isDeregModeInSP = sharedPreferencesManager.isDeregistrationModeActive()
-        Log.i(
-            tag,
-            "onResume. SP DeregMode Active: $isDeregModeInSP, wmsLaunchedThisSession до обработки: $wmsLaunchedThisSession"
-        )
-
-        navigationToDeregJob?.cancel() // Отменяем любую запланированную навигацию, т.к. мы уже в onResume
-
+        Log.i(tag, "onResume. SP DeregMode Active: $isDeregModeInSP, wmsLaunchedThisSession до обработки: $wmsLaunchedThisSession")
+        navigationToDeregJob?.cancel()
         if (isDeregModeInSP) {
-            // Если SP активен, принудительно переходим и завершаем MainActivity
             val userLoginDisp = sharedPreferencesManager.getUserBarcodeToDeregister()
-            val andrId = sharedPreferencesManager.getAndroidIdForDereg() // Android ID
-            val orderNum =
-                sharedPreferencesManager.getOrderNumberForDereg() // Device Identifier
-            Log.w(
-                tag,
-                "onResume: SP DeregMode АКТИВЕН! Принудительный переход и ЗАВЕРШЕНИЕ MainActivity. User: $userLoginDisp, Device(AndroidID): $andrId, Order(DevIdentifier): $orderNum"
-            )
+            val andrId = sharedPreferencesManager.getAndroidIdForDereg()
+            val orderNum = sharedPreferencesManager.getOrderNumberForDereg()
             if (andrId != null) {
                 goToDeregistrationScreen(userLoginDisp, andrId, orderNum)
                 finish()
-                return // Прерываем выполнение onResume
+                return
             } else {
-                Log.e(
-                    tag,
-                    "onResume: SP DeregMode активен, но deviceId (Android ID) в SP null! Аварийная очистка SP."
-                )
+                Log.e(tag, "onResume: SP DeregMode активен, но deviceId в SP null! Аварийная очистка SP.")
                 sharedPreferencesManager.clearDeregistrationState()
-                // isDeregModeInSP станет false для следующей части логики
             }
         }
-
-        // Этот код выполнится, если SP НЕ активен (isDeregModeInSP == false ИЛИ был только что аварийно очищен)
         if (wmsLaunchedThisSession) {
-            Log.d(tag, "onResume: WMS был запущен в этой сессии, SP теперь чист. Сброс состояния.")
-            // Сообщаем ViewModel, что мы вернулись и SP чист
             mainViewModel.returnedFromDeregistrationOrAppResume(sharedPreferencesManager.isDeregistrationModeActive())
         }
-        wmsLaunchedThisSession = false // Готовимся к новому циклу сканирования/запуска WMS
-        Log.d(tag, "onResume: wmsLaunchedThisSession установлен в false.")
-
-        // Активация сканера (для cameraScanner flavor)
-        if (tag.contains("Camera")) { // Предполагаем, что это ваш способ определения flavor
-            if (ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.CAMERA
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                barcodeView?.resume()
-                Log.d(tag, "onResume: Camera resumed.")
-            } else {
-                Log.w(
-                    tag,
-                    "onResume: Camera permission not granted. Scanner может не возобновиться немедленно."
-                )
-                // Можно снова запросить разрешение, если это уместно, или показать сообщение
-                // requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
+        wmsLaunchedThisSession = false
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            barcodeView?.resume()
+            Log.d(tag, "onResume: Camera resumed.")
         }
     }
 
     override fun onPause() {
         super.onPause()
         Log.d(tag, "onPause")
-        navigationToDeregJob?.cancel() // Отменяем навигацию, если Activity уходит в фон
-
-        if (tag.contains("Camera")) { // Для cameraScanner flavor
-            barcodeView?.pause()
-        } else { // Для hardwareScanner flavor
-            // unregisterScanReceiver() // Ваша логика для hardware-сканера
-        }
+        navigationToDeregJob?.cancel()
+        barcodeView?.pause()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
-        navigationToDeregJob?.cancel() // На всякий случай
+        navigationToDeregJob?.cancel()
         Log.i(tag, "onDestroy")
     }
 }

@@ -49,6 +49,14 @@ object Constants {
     const val API_SERVER_ENDPOINT_ADD_DEVICE = "add_device"
     const val API_SERVER_ENDPOINT_DEREGISTER = "deregister"
 
+    /** My notebook ip_address */
+    const val MY_IP_ADDRESS = "http://10.42.0.1:5000/"
+
+
+    /** DeviceManagementService */
+    const val NOTIFICATION_ID = 101
+    const val NOTIFICATION_CHANNEL_ID = "DeviceManagementChannel"
+
 
     /** ШК для настроек */
     const val SECRET_BARCODE = "A7X4-D9LQ-"
