@@ -6,24 +6,22 @@ import datetime
 import logging
 import csv
 import psycopg2
+import fcntl
 from base64 import b64decode, b64encode
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from cryptography.fernet import Fernet
 from flask import current_app, jsonify
 
-# ИЗМЕНЕНО: SocketIO импортируется из __init__.py нашего пакета 'app'
 from . import socketio
 
-# --- ИЗМЕНЕНИЕ: УБИРАЕМ ИНИЦИАЛИЗАЦИЮ ОТСЮДА ---
-# Оставляем "пустые" переменные, которые будут инициализированы в create_app
+# "Пустые" переменные, которые будут инициализированы в create_app
 fernet_cipher = None
 fio_manager = None
+log_file_lock = None
 
-# --- МЕНЕДЖЕР ФИО (Класс остается без изменений) ---
+
 class FIOManager:
-    # ... (Здесь ваш код класса FIOManager без изменений) ...
-    # Копипаст вашего класса FIOManager сюда целиком
     def __init__(self, filepath):
         self.filepath = filepath
         self.employee_fio_map = {}
@@ -69,36 +67,126 @@ class FIOManager:
         self._load_data()
         return self.employee_fio_map.get(login)
 
-# --- Функции остаются прежними, они будут использовать инициализированные объекты ---
+# --- НОВАЯ ЛОГИКА СМЕН ---
+
+def get_shift_info(timestamp):
+    """
+    Определяет информацию о смене для заданной временной метки.
+    ВАЖНО: timestamp должен быть 'aware' (с часовым поясом).
+    """
+    # Убедимся, что на входе aware-объект
+    if timestamp.tzinfo is None:
+        # Если пришел naive, считаем его локальным и делаем aware
+        timestamp = timestamp.astimezone()
+
+    day_shift_start_hour, day_shift_start_minute = 7, 30
+    night_shift_start_hour, night_shift_start_minute = 19, 30
+    day_reg_open_hour = 6
+    night_reg_open_hour = 18
+
+    today_at_midnight = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    day_shift_start = today_at_midnight.replace(hour=day_shift_start_hour, minute=day_shift_start_minute)
+    night_shift_start = today_at_midnight.replace(hour=night_shift_start_hour, minute=night_shift_start_minute)
+    
+    day_reg_open = today_at_midnight.replace(hour=day_reg_open_hour)
+    night_reg_open = today_at_midnight.replace(hour=night_reg_open_hour)
+
+    if day_reg_open <= timestamp < day_shift_start:
+        return {"type": "Дневная смена", "start_time": day_shift_start}
+    elif day_shift_start <= timestamp < night_reg_open:
+        return {"type": "Дневная смена", "start_time": day_shift_start}
+    elif night_reg_open <= timestamp < night_shift_start:
+        return {"type": "Ночная смена", "start_time": night_shift_start}
+    elif timestamp >= night_shift_start:
+        return {"type": "Ночная смена", "start_time": night_shift_start}
+    else: # timestamp < day_reg_open (раннее утро, относится к прошлой ночной смене)
+        yesterday_night_shift_start = (today_at_midnight - datetime.timedelta(days=1)).replace(hour=night_shift_start_hour, minute=night_shift_start_minute)
+        return {"type": "Ночная смена", "start_time": yesterday_night_shift_start}
+
 
 def get_current_log_filename():
-    # ... (код без изменений) ...
+    """Возвращает имя файла лога для текущего года."""
     current_year = datetime.datetime.now().year
-    return f"master_event_log_{current_year}.jsonl"
+    return current_app.config['SESSION_LOG_FILENAME_TEMPLATE'].format(year=current_year)
 
-def append_to_master_log(event_name, data_dict):
-    # ... (код без изменений) ...
+
+def update_session_log(session_data_to_update):
+    """
+    Находит и обновляет сессию в файле лога или создает новую.
+    Финальная, максимально надежная версия с подробным логированием.
+    """
+    log_file = get_current_log_filename()
+    session_id = session_data_to_update["session_id"]
+    
+    logging.info(f"Начало обновления сессии {session_id} в файле {log_file}")
+
+    lines_to_write = []
+    found = False
+    
+    try:
+        # --- Чтение ---
+        if os.path.exists(log_file) and os.path.getsize(log_file) > 0:
+            with open(log_file, "r", encoding="utf-8") as f:
+                current_lines = f.readlines()
+        else:
+            current_lines = []
+            logging.info(f"Файл лога {log_file} не существует или пуст. Будет создан новый.")
+
+        # --- Обработка в памяти ---
+        for line in current_lines:
+            if not line.strip(): continue # Пропускаем пустые строки
+            
+            try:
+                entry = json.loads(line)
+                if entry.get("session_id") == session_id:
+                    logging.info(f"Найдена существующая сессия {session_id}. Добавление событий.")
+                    entry["events"].extend(session_data_to_update["events"])
+                    entry["last_updated"] = session_data_to_update["last_updated"]
+                    lines_to_write.append(json.dumps(entry, ensure_ascii=False) + "\n")
+                    found = True
+                else:
+                    lines_to_write.append(line)
+            except json.JSONDecodeError:
+                logging.warning(f"Пропуск поврежденной строки в логе: {line.strip()}")
+                lines_to_write.append(line)
+
+        if not found:
+            logging.info(f"Сессия {session_id} не найдена. Создание новой записи.")
+            lines_to_write.append(json.dumps(session_data_to_update, ensure_ascii=False) + "\n")
+
+        # --- Запись ---
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.writelines(lines_to_write)
+        
+        logging.info(f"Сессия {session_id} успешно записана в {log_file}.")
+
+    except Exception as e:
+        logging.critical(f"КРИТИЧЕСКАЯ ОШИБКА при обновлении лога сессий: {e}", exc_info=True)
+        logging.error(f"ДАННЫЕ, КОТОРЫЕ НЕ УДАЛОСЬ ЗАПИСАТЬ: {session_data_to_update}")
+
+
+def log_system_event(event_data):
+    """Записывает системное событие в лог-файл."""
     log_file = get_current_log_filename()
     try:
         log_entry = {
-            "timestamp_event": data_dict.get("serverTimestamp", datetime.datetime.now().strftime("%d.%m.%Y %H:%M")),
-            "timestamp_logged_utc": datetime.datetime.utcnow().isoformat() + "Z",
-            "event_name": event_name,
-            "log_data": dict(data_dict)
+            "event_type": "system_event",
+            "timestamp_utc": datetime.datetime.utcnow().isoformat() + "Z",
+            "data": event_data
         }
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
     except Exception as e:
-        logging.error(f"КРИТИЧЕСКАЯ ОШИБКА: Не удалось записать в главный лог ({log_file}): {e}", exc_info=True)
+        logging.error(f"КРИТИЧЕСКАЯ ОШИБКА: Не удалось записать системное событие в лог ({log_file}): {e}", exc_info=True)
 
-def emit_and_log(event_name_socketio, data_to_emit_and_log, event_name_for_log_file=None):
-    # ... (код без изменений) ...
-    socketio.emit(event_name_socketio, data_to_emit_and_log)
-    log_event_name = event_name_for_log_file if event_name_for_log_file else event_name_socketio
-    append_to_master_log(log_event_name, data_to_emit_and_log)
+
+def emit_event(event_name, data):
+    """Просто отправляет событие через SocketIO без логирования в файл."""
+    socketio.emit(event_name, data)
+
 
 def get_db_connection():
-    # ... (код без изменений) ...
     try:
         conn = psycopg2.connect(
             dbname=current_app.config['DB_NAME'],
@@ -112,8 +200,8 @@ def get_db_connection():
         logging.error(f"Не удалось подключиться к БД: {e}")
         raise
 
+
 def decrypt_aes(encrypted_data, iv_b64):
-    # ... (код без изменений) ...
     try:
         iv = b64decode(iv_b64)
         secret_key = current_app.config['AES_SECRET_KEY']
@@ -126,7 +214,6 @@ def decrypt_aes(encrypted_data, iv_b64):
         return None
 
 def encrypt_aes(data_to_encrypt_str, iv_bytes):
-    # ... (код без изменений) ...
     try:
         secret_key = current_app.config['AES_SECRET_KEY']
         cipher_obj = AES.new(secret_key, AES.MODE_CBC, iv_bytes)
@@ -138,11 +225,9 @@ def encrypt_aes(data_to_encrypt_str, iv_bytes):
         return None
 
 def is_admin_user(login_without_prefix):
-    # ... (код без изменений) ...
     return login_without_prefix.startswith(current_app.config['ADMIN_BARCODE_PREFIX'])
 
 def send_tsd_error_response(status_code_http, error_status_key, error_message_text, server_timestamp_str, user_login=None, device_identifier_display=None):
-    # ... (код без изменений) ...
     response_payload_tsd = {"status": error_status_key, "message": error_message_text, "serverTimestamp": server_timestamp_str}
     if user_login:
         response_payload_tsd["userLogin"] = user_login

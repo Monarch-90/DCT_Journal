@@ -8,8 +8,6 @@ class Config:
     Класс для хранения всех конфигурационных переменных приложения.
     """
     # --- КЛЮЧИ ШИФРОВАНИЯ ---
-    # ВАЖНО: В реальном проекте эти ключи лучше хранить в переменных окружения,
-    # а не прямо в коде.
     FERNET_KEY = b"wFVzjaJd2H9MlwEsAXxxZ1vUDIK5rfRpOsOgczPvtsY="
     AES_SECRET_KEY = b64decode("dGhpc2lzbXlzZWNyZXRrZXlmb3JhcGVz")
 
@@ -22,9 +20,11 @@ class Config:
 
     # --- КОНСТАНТЫ ПРИЛОЖЕНИЯ ---
     ADMIN_BARCODE_PREFIX = "ADM-SWH-"
-    ADMIN_BARCODE = "20ADM-SWH-" # Это, кажется, не используется, но оставлю на всякий случай
+    ADMIN_BARCODE = "20ADM-SWH-"
     MASKED_ADMIN_BARCODE = "Администратор"
     FIO_CSV_FILE = "WMSMANAGER.txt"
+    # НОВОЕ: Шаблон для имени файла логов сессий
+    SESSION_LOG_FILENAME_TEMPLATE = "master_session_log_{year}.jsonl"
 
     # --- ПАРАМЕТРЫ ЗАПУСКА СЕРВЕРА ---
     SERVER_HOST = "0.0.0.0"

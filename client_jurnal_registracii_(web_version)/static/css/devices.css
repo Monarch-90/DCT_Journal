@@ -1,0 +1,150 @@
+/* /devices.css */
+
+/* Основной контейнер для карточек */
+#device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+/* Стили для отдельной карточки устройства */
+.device-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 5px solid #bdc3c7; /* Серый по-умолчанию */
+}
+
+.device-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+}
+
+/* Цвета для статусов */
+.device-card[data-status="online"] { border-left-color: #2ecc71; /* Зеленый */ }
+.device-card[data-status="offline"] { border-left-color: #e74c3c; /* Красный */ }
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.device-name {
+    font-size: 1.5em;
+    font-weight: 600;
+    color: #2c3e50;
+}
+.device-name small {
+    font-size: 0.5em;
+    font-weight: 400;
+    color: #7f8c8d;
+    display: block;
+    margin-top: 2px;
+}
+.status-indicator-card {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    font-size: 0.9em;
+}
+.status-indicator-card::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background-color: #bdc3c7;
+}
+.device-card[data-status="online"] .status-indicator-card::before { background-color: #2ecc71; }
+.device-card[data-status="offline"] .status-indicator-card::before { background-color: #e74c3c; }
+
+
+.card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 15px;
+    font-size: 0.9em;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+.info-label {
+    font-size: 0.8em;
+    color: #7f8c8d;
+    text-transform: uppercase;
+}
+.info-value {
+    font-weight: 500;
+    color: #34495e;
+}
+.info-value .battery-icon {
+    font-style: normal;
+    margin-right: 5px;
+}
+.info-value select, .info-value input {
+    font: inherit;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 6px;
+    width: 100%;
+}
+
+.card-footer {
+    margin-top: auto; /* Прижимает футер к низу */
+    padding-top: 15px;
+    border-top: 1px solid #ecf0f1;
+    display: flex;
+    gap: 10px;
+}
+.card-button {
+    flex-grow: 1;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.card-button:hover { background-color: #2980b9; }
+.card-button.save-btn { background-color: #27ae60; }
+.card-button.save-btn:hover { background-color: #229954; }
+
+/* НАЧАЛО ИЗМЕНЕНИЙ: Стили для кнопки в шапке */
+.header-actions {
+    margin-left: auto; /* Прижимает кнопку вправо, перед статусом */
+    margin-right: 20px;
+}
+
+.header-button {
+    background-color: #7f8c8d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.header-button:hover {
+    background-color: #95a5a6;
+}
+
+.header-button:active {
+    transform: scale(0.98);
+}
+/* КОНЕЦ ИЗМЕНЕНИЙ */
+
